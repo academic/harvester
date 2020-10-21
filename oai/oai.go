@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -174,6 +176,31 @@ func (desc Description) GoString() string { return fmt.Sprintf("%s", desc.Body) 
 // GoString Formatter for About content
 func (ab About) GoString() string { return fmt.Sprintf("%s", ab.Body) }
 
+func retry(attempts int, sleep time.Duration, f func() error) error {
+	if err := f(); err != nil {
+		if s, ok := err.(stop); ok {
+			// Return the original error for later checking
+			return s.error
+		}
+
+		if attempts--; attempts > 0 {
+			// Add some randomness to prevent creating a Thundering Herd
+			jitter := time.Duration(rand.Int63n(int64(sleep)))
+			sleep = sleep + jitter/2
+
+			time.Sleep(sleep)
+			return retry(attempts, 2*sleep, f)
+		}
+		return err
+	}
+
+	return nil
+}
+
+type stop struct {
+	error
+}
+
 // Perform an HTTP GET request using the OAI Requests fields
 // and return an OAI Response reference
 func (req *Request) Perform() (oaiResponse *Response) {
@@ -188,27 +215,51 @@ func (req *Request) Perform() (oaiResponse *Response) {
 		Timeout:   timeout,
 		Transport: tr,
 	}
-	resp, err := client.Get(req.String())
+	err := retry(10, time.Second, func() error {
+
+		resp, err := client.Get(req.String())
+		if err != nil {
+			return err
+		}
+
+		// Make sure the response body object will be closed after
+		// reading all the content body's data
+		defer resp.Body.Close()
+
+		s := resp.StatusCode
+		switch {
+		case s >= 500:
+			// Retry
+			return fmt.Errorf("server error: %v", s)
+		case s == 408:
+			// Retry
+			return fmt.Errorf("Timeout error: %v", s)
+		case s >= 400:
+			// Don't retry, it was client's fault
+			return stop{fmt.Errorf("client error: %v", s)}
+		default:
+			// Happy
+			// Read all the data
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return stop{err}
+			}
+
+			// Unmarshall all the data
+			err = xml.Unmarshal(body, &oaiResponse)
+			if err != nil {
+				return stop{err}
+			}
+
+			return nil
+		}
+
+	})
 	if err != nil {
+		// unable to harvest panic for now
+		log.Printf("problem url: %s", req.String())
 		panic(err)
 	}
-
-	// Make sure the response body object will be closed after
-	// reading all the content body's data
-	defer resp.Body.Close()
-
-	// Read all the data
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
-
-	// Unmarshall all the data
-	err = xml.Unmarshal(body, &oaiResponse)
-	if err != nil {
-		panic(err)
-	}
-
 	return
 }
 
