@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Header ...
@@ -177,7 +178,17 @@ func (ab About) GoString() string { return fmt.Sprintf("%s", ab.Body) }
 // and return an OAI Response reference
 func (req *Request) Perform() (oaiResponse *Response) {
 	// Perform the GET request
-	resp, err := http.Get(req.String())
+	tr := &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    30 * time.Second,
+		DisableCompression: true,
+	}
+	timeout := time.Duration(60 * time.Second)
+	client := &http.Client{
+		Timeout:   timeout,
+		Transport: tr,
+	}
+	resp, err := client.Get(req.String())
 	if err != nil {
 		panic(err)
 	}
