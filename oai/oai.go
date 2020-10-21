@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// Header ...
 type Header struct {
 	Status     string   `xml:"status,attr"`
 	Identifier string   `xml:"identifier"`
@@ -15,40 +16,100 @@ type Header struct {
 	SetSpec    []string `xml:"setSpec"`
 }
 
+// TODO: Body 2 Dcx
+
+// Metadata ...
 type Metadata struct {
 	Body []byte `xml:",innerxml"`
 }
 
+// About ...
 type About struct {
 	Body []byte `xml:",innerxml"`
 }
 
+// Record ...
 type Record struct {
 	Header   Header   `xml:"header"`
 	Metadata Metadata `xml:"metadata"`
 	About    About    `xml:"about"`
 }
 
+// Dcx ...
+type Dcx struct {
+	XMLName    xml.Name `xml:"dcx"`
+	Text       string   `xml:",chardata"`
+	SrwDc      string   `xml:"srw_dc,attr"`
+	Dc         string   `xml:"dc,attr"`
+	Dcx        string   `xml:"dcx,attr"`
+	Xsi        string   `xml:"xsi,attr"`
+	Dcterms    string   `xml:"dcterms,attr"`
+	Identifier struct {
+		Text string `xml:",chardata"`
+		Type string `xml:"type,attr"`
+	} `xml:"identifier"`
+	RecordIdentifier string `xml:"recordIdentifier"`
+	Title            string `xml:"title"`
+	Type             []struct {
+		Text string `xml:",chardata"`
+		Lang string `xml:"lang,attr"`
+		Type string `xml:"type,attr"`
+	} `xml:"type"`
+	Date         string `xml:"date"`
+	Issuenumber  string `xml:"issuenumber"`
+	Volume       string `xml:"volume"`
+	Publisher    string `xml:"publisher"`
+	Source       string `xml:"source"`
+	RecordRights []struct {
+		Text string `xml:",chardata"`
+		Lang string `xml:"lang,attr"`
+	} `xml:"recordRights"`
+	Language struct {
+		Text string `xml:",chardata"`
+		Type string `xml:"type,attr"`
+	} `xml:"language"`
+	IsPartOf []struct {
+		Text             string `xml:",chardata"`
+		RecordIdentifier string `xml:"recordIdentifier,attr"`
+		Type             string `xml:"type,attr"`
+	} `xml:"isPartOf"`
+	IsReplacedBy []struct {
+		Text             string `xml:",chardata"`
+		Recordidentifier string `xml:"recordidentifier,attr"`
+		Type             string `xml:"type,attr"`
+	} `xml:"isReplacedBy"`
+	Issued string `xml:"issued"`
+	Extent struct {
+		Text string `xml:",chardata"`
+		Type string `xml:"type,attr"`
+	} `xml:"extent"`
+}
+
+// ListIdentifiers ...
 type ListIdentifiers struct {
 	Headers         []Header `xml:"header"`
 	ResumptionToken string   `xml:"resumptionToken"`
 }
 
+// ListRecords ...
 type ListRecords struct {
 	Records         []Record `xml:"record"`
 	ResumptionToken string   `xml:"resumptionToken"`
 }
 
+// GetRecord ...
 type GetRecord struct {
 	Record Record `xml:"record"`
 }
 
+// RequestNode ...
 type RequestNode struct {
 	Verb           string `xml:"verb,attr"`
 	Set            string `xml:"set,attr"`
 	MetadataPrefix string `xml:"metadataPrefix,attr"`
 }
 
+// OAIError ...
 type OAIError struct {
 	Code    string `xml:"code,attr"`
 	Message string `xml:",chardata"`
@@ -103,13 +164,13 @@ type Response struct {
 	ListRecords         ListRecords         `xml:"ListRecords"`
 }
 
-// Formatter for Metadata content
+// GoString Formatter for Metadata content
 func (md Metadata) GoString() string { return fmt.Sprintf("%s", md.Body) }
 
-// Formatter for Description content
+// GoString Formatter for Description content
 func (desc Description) GoString() string { return fmt.Sprintf("%s", desc.Body) }
 
-// Formatter for About content
+// GoString Formatter for About content
 func (ab About) GoString() string { return fmt.Sprintf("%s", ab.Body) }
 
 // Perform an HTTP GET request using the OAI Requests fields
@@ -140,7 +201,7 @@ func (req *Request) Perform() (oaiResponse *Response) {
 	return
 }
 
-// Represents a request URL and query string to an OAI-PMH service
+// Request Represents a request URL and query string to an OAI-PMH service
 type Request struct {
 	BaseURL, Set, MetadataPrefix, Verb, Identifier, ResumptionToken, From, Until string
 }
